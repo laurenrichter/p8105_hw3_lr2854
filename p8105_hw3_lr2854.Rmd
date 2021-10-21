@@ -108,7 +108,7 @@ knitr::kable(digits = 0, caption = "Mean Hour of the Day (24h) when Pink Lady Ap
 ## Problem 2
 
 ```{r brfss_data}
-brfss = data("brfss_smart2010") # load in dataset
+data("brfss_smart2010") # load in dataset
 ```
 
 First, do some data cleaning:
@@ -119,13 +119,13 @@ First, do some data cleaning:
 - organize responses as a factor taking levels ordered from “Poor” to “Excellent”
 
 ```{r brfss_cleaning}
-brfss %>%
+brfss = brfss_smart2010 %>%
   janitor::clean_names() %>%
   filter(topic == "Overall Health") %>%
-  filter(response == c("Poor", "Fair", "Good", "Very good", "Excellent")) %>% 
-  mutate(
-    response = factor(response, levels =c("Poor", "Fair", "Good", "Very good", "Excellent"))
-    ) 
+  filter(response == c("Poor", "Fair", "Good", "Very good", "Excellent")) %>%
+  mutate(response = factor(response, 
+                           levels =c("Poor", "Fair", "Good", "Very good", "Excellent"),
+                           ordered = TRUE))
 ```
 #Problem 2 Questions
 
@@ -134,8 +134,19 @@ brfss %>%
 ```{r states_7}
 brfss %>%
   filter(year == 2002) %>%
-  group_by(locationabbr, locationdesc)
+  group_by(locationabbr) %>%
+  count(locationabbr) %>%
+  filter(n >= 7) %>%
+  knitr::kable(caption = "States with 7 or more locations in 2002")
+
+brfss %>%
+  filter(year == 2010) %>%
+  group_by(locationabbr) %>%
+  count(locationabbr) %>%
+  filter(n >= 7) %>%
+  knitr::kable(caption = "States with 7 or more locations in 2010")
 ```
+
 - **Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
 
 - **Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.**
