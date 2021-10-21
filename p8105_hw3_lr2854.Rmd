@@ -280,7 +280,7 @@ accel_data %>%
 ```
 
 However, if we log transform the activity and look at a "smoothed" activity, this trend is clearer. The person is less active almost universally on Saturdays compared to any other day of the week. On weekdays, particularly Wed-Fri, the person is more active at night, compared to other days of the week.
-```{r accel_plot}
+```{r accel_plot_log}
 
 accel_data %>%
   group_by(day_id, day) %>%
