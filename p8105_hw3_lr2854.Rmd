@@ -48,7 +48,10 @@ instacart %>%
   mutate(aisle = fct_reorder(aisle, desc(n))) %>% # descending sort
   ggplot(aes(x = aisle, y = n)) + 
   geom_point() + 
-  labs(title = "Number Items Ordered per Aisle", subtitle = "For aisles with >10,000 orders") +
+  labs(
+    title = "Number Items Ordered per Aisle", subtitle = "For aisles with >10,000 orders",
+    x = "Aisle",
+    y = "Items Ordered (n)") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -125,7 +128,8 @@ brfss = brfss_smart2010 %>%
   filter(response == c("Poor", "Fair", "Good", "Very good", "Excellent")) %>%
   mutate(response = factor(response, 
                            levels =c("Poor", "Fair", "Good", "Very good", "Excellent"),
-                           ordered = TRUE))
+                           ordered = TRUE)) %>%
+  rename(state = locationabbr, county = factor("locationdesc"))
 ```
 #Problem 2 Questions
 
@@ -134,19 +138,51 @@ brfss = brfss_smart2010 %>%
 ```{r states_7}
 brfss %>%
   filter(year == 2002) %>%
-  group_by(locationabbr) %>%
-  count(locationabbr) %>%
+  group_by(state) %>%
+  count(state) %>%
   filter(n >= 7) %>%
   knitr::kable(caption = "States with 7 or more locations in 2002")
 
 brfss %>%
   filter(year == 2010) %>%
-  group_by(locationabbr) %>%
-  count(locationabbr) %>%
+  group_by(state) %>%
+  count(state) %>%
   filter(n >= 7) %>%
   knitr::kable(caption = "States with 7 or more locations in 2010")
 ```
 
 - **Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
 
+```{r excellent_only}
+brfss_excellent = brfss %>%
+  filter(response == "Excellent") %>%
+  # filter(is.na(data_value) == FALSE) %>% # if you want to remove NJ since it is NA
+  group_by(year,state) %>%
+  summarize(avg_data_value = mean(data_value))
+
+excellent_states = c(brfss_excellent$state)
+
+knitr::kable(brfss_excellent, caption = "Average Values of States Reporting \"Excellent\" Overall Health")
+```
+
+**Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
+
+```{r excellent_spaghetti}
+brfss %>% 
+  filter(state %in% excellent_states) %>%
+  group_by(year,state) %>%
+  summarize(avg_data_value = mean(data_value)) %>%
+  ggplot(aes(x = year, y = avg_data_value)) +
+  geom_line(aes(group = state, color = state)) +
+  geom_point(data = brfss_excellent, aes(x = year, y = avg_data_value, group = state, color = state)) + geom_line(data = brfss_excellent, linetype= "dashed", aes(x = year, y = avg_data_value, group = state, color = state)) +
+  labs(
+    title = "Change in Data Values by Year ", 
+    subtitle = "States with >= 1 Site with Reported \"Excellent\" Overall Health",
+    y = "Average State Value",
+    x = "Year",
+    caption = "Points indicate the average value for \"Excellent\" sites only"
+  )
+```
+
 - **Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.**
+
