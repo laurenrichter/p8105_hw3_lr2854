@@ -206,3 +206,33 @@ ggplot(data = brfss_ny, aes(x = response, y = data_value)) +
         legend.position = "none")
 ```
 
+# Problem 3
+
+Accelerometer data
+
+- Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
+```{r accel_data}
+
+# for columns, replace the activity.* with just numbers, which will be converted to 24h time 
+
+accel_data = read_csv("data/accel_data.csv") %>%
+  janitor::clean_names() %>%
+  rename_with(~ sub("activity","minute", .x)) %>%
+  mutate(weekend = ifelse(day %in% c("Saturday", "Sunday"), 1, 0)) %>% 
+  mutate(day, day = factor(day, ordered = TRUE)) %>%
+  pivot_longer(
+    minute_1:minute_1440,
+    names_to = "minute", 
+    names_prefix = "minute_", 
+    values_to = "activity_count"
+  ) %>%
+  mutate(minute, minute = as.numeric(minute))
+ 
+accel_data
+```
+
+
+- Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+
+- Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
