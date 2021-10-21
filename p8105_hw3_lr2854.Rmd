@@ -86,7 +86,7 @@ knitr::kable(head(pack_vegs_fruits,3), caption = "Top 3 Products from the Packag
 ```{r instacart_apples_coffee}
 
 instacart %>%
-  filter(product_name == c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
   group_by(product_name, order_dow) %>%
   summarize(mean_hour = mean(order_hour_of_day)) %>%
   mutate(
@@ -169,7 +169,7 @@ brfss_excellent = brfss %>%
 
 excellent_states = c(brfss_excellent$state) # get the names of the excellent states
 
-knitr::kable(brfss_excellent, caption = "Average Values of States Reporting \"Excellent\" Overall Health")
+knitr::kable(head(brfss_excellent))
 ```
 
 **Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
@@ -178,9 +178,9 @@ knitr::kable(brfss_excellent, caption = "Average Values of States Reporting \"Ex
 
 brfss_excellent %>% 
   ggplot(aes(x = year, y = avg_data_value)) +
-  geom_line(aes(group = state, color = state, alpha = 0.5)) +
+  geom_line(aes(group = state, color = state)) +
   labs(
-    title = "Change in Average Data Value for \"Excellent\" Overall Health by Year ", 
+    title = "Change in Average Data Value by Year ", 
     subtitle = "States with >= 1 Site with Reported \"Excellent\" Overall Health",
     y = "Average State Value",
     x = "Year"
@@ -210,17 +210,29 @@ ggplot(data = brfss_ny, aes(x = response, y = data_value)) +
 
 Accelerometer data
 
-- Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
-
 ```{r accel_data}
 
-# for columns, replace the activity.* with just numbers, which will be converted to 24h time 
+# for columns, replace the activity.* with minute
+# make the day of the week an ordinal variable
+# then pivot longer to make the df more legible
 
-accel_data = read_csv("data/accel_data.csv") %>%
+orig_accel_data = read_csv("data/accel_data.csv")
+
+accel_data = orig_accel_data %>%
   janitor::clean_names() %>%
   rename_with(~ sub("activity","minute", .x)) %>%
   mutate(weekend = ifelse(day %in% c("Saturday", "Sunday"), 1, 0)) %>% 
-  mutate(day, day = factor(day, ordered = TRUE)) %>%
+  mutate(day, 
+         day = factor(day,
+                      levels = c("Sunday", 
+                                 "Monday",
+                                 "Tuesday",
+                                 "Wednesday", 
+                                 "Thursday", 
+                                 "Friday", 
+                                 "Saturday"), 
+                      ordered = TRUE)
+         ) %>%
   pivot_longer(
     minute_1:minute_1440,
     names_to = "minute", 
@@ -228,11 +240,55 @@ accel_data = read_csv("data/accel_data.csv") %>%
     values_to = "activity_count"
   ) %>%
   mutate(minute, minute = as.numeric(minute))
- 
-accel_data
+
 ```
 
+The original accelerometer dataset was a wide `r nrow(orig_accel_data)` x `r ncol(orig_accel_data)`, with 1440 activity count variables corresponding to each minute of a 24h day for a total of `r length(unique(accel_data$day_id))` days. Other variables in the original dataset were the week number, the day of the week, and the day ID. After tidying, the dataset is `r nrow(accel_data)` x `r ncol(accel_data)`, with the variables representing `r colnames(accel_data)`. The weekend variable was added as a binary indicator of whether the day is on a weekend or not.
 
-- Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+- **Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?**
+There are no obvious trends except that there seems to be decreasing activity on weekends as the weeks go on.
 
-- Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+```{r accel_daily_agg}
+
+accel_data %>%
+  group_by(week, day_id, day, weekend) %>%
+  summarize(total_daily_activity = sum(activity_count)) %>%
+  pivot_wider(
+    week,
+    names_from = day,
+    values_from = total_daily_activity) %>%
+  select(c("week", "Sunday", "Monday", "Tuesday","Wednesday","Thursday","Friday","Saturday")) %>%
+  knitr::kable()
+
+  
+```
+
+- **Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.**
+
+If you look at each day's minute by minute trend, it is difficult to see any patterns at this resolution, although it seems like the person is less active on the weekends, particularly less so in the morning compared to weekdays.
+```{r accel_plot}
+
+accel_data %>%
+  group_by(day_id, day) %>%
+  ggplot(aes(x = minute, y =activity_count)) +
+  geom_line(aes(color = day, group = day, position="stacked")) +
+  labs(
+    title = "Minute Activity Count over 24h",
+    y = "Activity Count",
+    x = "Time of Day (minutes)"
+  )
+```
+
+However, if we log transform the activity and look at a "smoothed" activity, this trend is clearer. The person is less active almost universally on Saturdays compared to any other day of the week. On weekdays, particularly Wed-Fri, the person is more active at night, compared to other days of the week.
+```{r accel_plot}
+
+accel_data %>%
+  group_by(day_id, day) %>%
+  ggplot(aes(x = minute, y = log(activity_count))) +
+  geom_smooth(se = FALSE, aes(group = day, color = day)) +
+  labs(
+    title = "Minute Activity Count over 24h",
+    y = "log(Activity Count)",
+    x = "Time of Day (minutes)"
+  )
+```
