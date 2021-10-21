@@ -1,0 +1,141 @@
+---
+title: "p8105_hw3_lr2854"
+author: "Lauren Richter"
+date: 2021-10-20
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(p8105.datasets)
+
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, warning = FALSE)
+```
+
+## Problem 1
+
+```{r instacart_data}
+data("instacart") # load in instacart dataset
+```
+
+The Instacart dataset is `r nrow(instacart)` x `r ncol(instacart)`. The variable names are `r colnames(instacart)`.
+
+The data consists of individual order information, including the order number, the product being ordered (a numeric ID and string name), the order an item was added to the cart, the user who ordered, the time the order was placed (day of the week as an ordinal number and hour of the day), whether the item had been reordered (binary), and the location of the item (department and aisle as numeric ID and string). There is also a variable that defines whether the observation is in the train or test set for model validation.
+
+Example product names: `r unique(head(instacart$product_name))`.
+
+Example department names: `r unique(head(instacart$department))`.
+
+# Problem 1 Questions
+- **How many aisles are there, and which aisles are the most items ordered from?**
+```{r instacart_aisle_data, results = FALSE}
+
+top_aisles = instacart %>% 
+  count(aisle) %>%  # group by aisle
+  arrange(desc(n)) %>% # sort the table by descending number of orders
+  head(5)  # show top 5
+```
+
+There are `r length(unique(instacart$aisle_id))` aisles. The top 5 most-ordered-from aisles in descending order are: `r top_aisles$aisle`
+
+- **Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.**
+
+```{r instacart_aisle_plot}
+
+instacart %>% 
+  count(aisle) %>% 
+  filter(n > 10000) %>% 
+  mutate(aisle = fct_reorder(aisle, desc(n))) %>% # descending sort
+  ggplot(aes(x = aisle, y = n)) + 
+  geom_point() + 
+  labs(title = "Number Items Ordered per Aisle", subtitle = "For aisles with >10,000 orders") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+- **Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.**
+
+```{r instacart_3_aisles}
+
+baking_ings = instacart %>%
+  filter(aisle == "baking ingredients") %>%
+  count(product_name) %>%
+  arrange(desc(n))
+
+knitr::kable(head(baking_ings,3), caption = "Top 3 Products from the Baking Ingredients Aisle")
+
+
+dog_food = instacart %>%
+  filter(aisle == "dog food care") %>%
+  count(product_name) %>%
+  arrange(desc(n))
+
+knitr::kable(head(dog_food,3), caption = "Top 3 Products from the Dog Food Care Aisle")
+
+pack_vegs_fruits = instacart %>%
+  filter(aisle == "packaged vegetables fruits") %>%
+  count(product_name) %>%
+  arrange(desc(n))
+
+knitr::kable(head(pack_vegs_fruits,3), caption = "Top 3 Products from the Packaged Vegetables and Fruits Aisle")
+```
+- **Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).**
+
+```{r instacart_apples_coffee}
+
+instacart %>%
+  filter(product_name == c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>%
+  mutate(
+    order_dow = recode(
+      order_dow, 
+      "0" = "Sun", 
+      "1" = "Mon", 
+      "2" = "Tues",
+      "3" = "Wed", 
+      "4" = "Thurs", 
+      "5" = "Fri", 
+      "6" = "Sat")
+    ) %>%
+  pivot_wider(
+    names_from = order_dow, 
+    values_from = mean_hour) %>%
+  
+knitr::kable(digits = 0, caption = "Mean Hour of the Day (24h) when Pink Lady Apples and Coffee Ice Cream Are Ordered by Day of the Week")
+
+```
+
+## Problem 2
+
+```{r brfss_data}
+brfss = data("brfss_smart2010") # load in dataset
+```
+
+First, do some data cleaning:
+
+- format the data to use appropriate variable names;
+- focus on the “Overall Health” topic
+- include only responses from “Excellent” to “Poor”
+- organize responses as a factor taking levels ordered from “Poor” to “Excellent”
+
+```{r brfss_cleaning}
+brfss %>%
+  janitor::clean_names() %>%
+  filter(topic == "Overall Health") %>%
+  filter(response == c("Poor", "Fair", "Good", "Very good", "Excellent")) %>% 
+  mutate(
+    response = factor(response, levels =c("Poor", "Fair", "Good", "Very good", "Excellent"))
+    ) 
+```
+#Problem 2 Questions
+
+- **In 2002, which states were observed at 7 or more locations? What about in 2010?**
+
+```{r states_7}
+brfss %>%
+  filter(year == 2002) %>%
+  group_by(locationabbr, locationdesc)
+```
+- **Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
+
+- **Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.**
